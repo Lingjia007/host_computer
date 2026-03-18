@@ -200,7 +200,7 @@ class TerminalTextEdit(PlainTextEdit):
         super().__init__(parent)
         self._terminal_mode = False
         self._use_pyte = True
-        self._pyte_terminal = PyteTerminal(columns=120, rows=40)
+        self._pyte_terminal = PyteTerminal(columns=120, rows=1000)
         self._setup_font()
         self._setup_document()
 
@@ -469,7 +469,7 @@ class Serial_Tools_Widget(QWidget):
         self._text_cleared = False
         self._hex_cleared = False
         self.reception_area_Hex_text = PlainTextEdit()
-        font = QFont("Consolas", 9)
+        font = QFont("FiraMono Nerd Font", 10)
         font.setStyleHint(QFont.Monospace)
         self.reception_area_Hex_text.setFont(font)
         self.reception_area_text_hLayout.addWidget(self.reception_area_Hex_text)
