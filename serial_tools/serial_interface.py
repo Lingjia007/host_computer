@@ -1,6 +1,7 @@
 # coding:utf-8
 import sys
 import time
+from datetime import datetime
 import serial
 import serial.tools.list_ports
 from serial import Serial, SerialException
@@ -58,8 +59,7 @@ class PortComboBox(ComboBox):
         self._port_data = port_infos
         self.clear()
         for port_info in port_infos:
-            port_name = port_info.split(" : ")[0] if " : " in port_info else port_info
-            self.addItem(port_name)
+            self.addItem(port_info)
 
     def getPortData(self, index):
         if 0 <= index < len(self._port_data):
@@ -76,19 +76,9 @@ class PortComboBox(ComboBox):
                 return True
         return False
 
-    def showPopup(self):
-        for i in range(self.count()):
-            port_data = self.getPortData(i)
-            self.setItemText(i, port_data)
-        super().showPopup()
-
-    def hidePopup(self):
-        index = self.currentIndex()
-        port_data = self.getPortData(index)
-        port_name = port_data.split(" : ")[0] if " : " in port_data else port_data
-        super().hidePopup()
-        self.setItemText(index, port_name)
-        self.setCurrentText(port_name)
+    def currentText(self):
+        port_data = self.currentPortData()
+        return port_data.split(" : ")[0] if " : " in port_data else port_data
 
 
 class TerminalTextEdit(PlainTextEdit):
@@ -309,18 +299,6 @@ class Serial_Tools_Widget(QWidget):
 
         self.receive_bar_button_hLayout = QHBoxLayout()
 
-        self.textMode_checkBox = CheckBox("文本模式", self)
-        self.textMode_checkBox.setChecked(True)
-        self.HexMode_checkBox = CheckBox("Hex模式", self)
-        self.receive_bar_button_hLayout.addWidget(self.textMode_checkBox)
-        self.receive_bar_button_hLayout.addWidget(self.HexMode_checkBox)
-        self.textMode_checkBox.stateChanged.connect(self.update_checkBox_state)
-        self.HexMode_checkBox.stateChanged.connect(self.update_checkBox_state)
-
-        self.timestamp_checkBox = CheckBox("时间戳", self)
-        self.timestamp_checkBox.setChecked(False)
-        self.receive_bar_button_hLayout.addWidget(self.timestamp_checkBox)
-
         self.receive_bar_edit_togglebutton = ToggleButton("终端模式", self)
         self.receive_bar_edit_togglebutton.setIcon(FIF.COMMAND_PROMPT)
         self.receive_bar_edit_togglebutton.setMaximumWidth(120)
@@ -382,7 +360,7 @@ class Serial_Tools_Widget(QWidget):
         port_hlayout.addWidget(port_label)
         port_hlayout.addStretch(1)
         port_hlayout.addWidget(self.port_combo)
-        self.port_combo.setMinimumWidth(96)
+        self.port_combo.setFixedWidth(90)
         main_serial_setting_layout.addLayout(port_hlayout)
 
         # Baudrate selection
@@ -413,7 +391,7 @@ class Serial_Tools_Widget(QWidget):
         baudrate_hlayout.addWidget(baudrate_label)
         baudrate_hlayout.addStretch(1)
         baudrate_hlayout.addWidget(self.baudrate_combo)
-        self.baudrate_combo.setMinimumWidth(96)
+        self.baudrate_combo.setFixedWidth(90)
         main_serial_setting_layout.addLayout(baudrate_hlayout)
 
         # Data bits selection
@@ -431,7 +409,7 @@ class Serial_Tools_Widget(QWidget):
         databit_hlayout.addWidget(databit_label)
         databit_hlayout.addStretch(1)
         databit_hlayout.addWidget(self.databit_combo)
-        self.databit_combo.setMinimumWidth(96)
+        self.databit_combo.setFixedWidth(90)
         main_serial_setting_layout.addLayout(databit_hlayout)
 
         # Stop bits selection
@@ -448,7 +426,7 @@ class Serial_Tools_Widget(QWidget):
         stopbit_hlayout.addWidget(stopbit_label)
         stopbit_hlayout.addStretch(1)
         stopbit_hlayout.addWidget(self.stopbit_combo)
-        self.stopbit_combo.setMinimumWidth(96)
+        self.stopbit_combo.setFixedWidth(90)
         main_serial_setting_layout.addLayout(stopbit_hlayout)
 
         # Parity selection
@@ -465,7 +443,7 @@ class Serial_Tools_Widget(QWidget):
         parity_hlayout.addWidget(parity_label)
         parity_hlayout.addStretch(1)
         parity_hlayout.addWidget(self.parity_combo)
-        self.parity_combo.setMinimumWidth(96)
+        self.parity_combo.setFixedWidth(90)
         main_serial_setting_layout.addLayout(parity_hlayout)
 
         dtr_rts_hlayout = QHBoxLayout()
@@ -487,6 +465,21 @@ class Serial_Tools_Widget(QWidget):
         serial_port_start_hlayout = QHBoxLayout()
         serial_port_start_hlayout.addWidget(self.serial_start_pushbutton)
         main_serial_setting_layout.addLayout(serial_port_start_hlayout)
+
+        self.textMode_checkBox = CheckBox("文本显示区", self)
+        self.textMode_checkBox.setChecked(True)
+        main_serial_setting_layout.addWidget(self.textMode_checkBox)
+
+        self.HexMode_checkBox = CheckBox("Hex显示区", self)
+        main_serial_setting_layout.addWidget(self.HexMode_checkBox)
+
+        self.timestamp_checkBox = CheckBox("时间戳", self)
+        self.timestamp_checkBox.setChecked(False)
+        main_serial_setting_layout.addWidget(self.timestamp_checkBox)
+
+        self.textMode_checkBox.stateChanged.connect(self.update_checkBox_state)
+        self.HexMode_checkBox.stateChanged.connect(self.update_checkBox_state)
+
         main_serial_setting_layout.setSpacing(12)
         self.serial_setting.setLayout(main_serial_setting_layout)
 
@@ -715,9 +708,16 @@ class Serial_Tools_Widget(QWidget):
         if not self._text_cleared:
             self.reception_area_text.clear()
             self._text_cleared = True
+        
+        display_text = text_data
+        if self.timestamp_checkBox.isChecked() and not self.reception_area_text._terminal_mode:
+            now = datetime.now()
+            timestamp = now.strftime("%H:%M:%S.") + f"{now.microsecond // 1000:03d}"
+            display_text = f"[{timestamp}] {text_data}"
+        
         cursor = self.reception_area_text.textCursor()
         cursor.movePosition(cursor.End)
-        cursor.insertText(text_data)
+        cursor.insertText(display_text)
         self.reception_area_text.setTextCursor(cursor)
         self.reception_area_text.ensureCursorVisible()
 
@@ -725,9 +725,16 @@ class Serial_Tools_Widget(QWidget):
         if not self._hex_cleared:
             self.reception_area_Hex_text.clear()
             self._hex_cleared = True
+        
+        display_hex = hex_data
+        if self.timestamp_checkBox.isChecked() and not self.reception_area_text._terminal_mode:
+            now = datetime.now()
+            timestamp = now.strftime("%H:%M:%S.") + f"{now.microsecond // 1000:03d}"
+            display_hex = f"[{timestamp}] {hex_data}"
+        
         cursor = self.reception_area_Hex_text.textCursor()
         cursor.movePosition(cursor.End)
-        cursor.insertText(hex_data)
+        cursor.insertText(display_hex)
         self.reception_area_Hex_text.setTextCursor(cursor)
 
     def on_export_clicked(self):
