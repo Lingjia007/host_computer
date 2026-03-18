@@ -9,6 +9,7 @@ from qfluentwidgets import (NavigationItemPosition, MessageBox, setTheme, Theme,
                             NavigationAvatarWidget, SubtitleLabel, setFont, InfoBadge,
                             InfoBadgePosition, FluentTranslator)
 from qfluentwidgets import FluentIcon as FIF
+from serial_tools.serial_interface import Serial_Tools_Widget
 from settings.setting_interface import SettingInterface
 from settings.config import cfg, Language
 
@@ -32,6 +33,7 @@ class Window(FluentWindow):
         super().__init__()
 
         self.homeInterface = Widget('Home Interface', self)
+        self.serialInterface = Serial_Tools_Widget()
         self.settingInterface = SettingInterface(self)
 
         self.initNavigation()
@@ -39,10 +41,11 @@ class Window(FluentWindow):
 
     def initNavigation(self):
         self.addSubInterface(self.homeInterface, FIF.HOME, 'Home')
+        self.addSubInterface(self.serialInterface, FIF.DEVELOPER_TOOLS, 'Serial Port')
         self.addSubInterface(self.settingInterface, FIF.SETTING, 'Settings', NavigationItemPosition.BOTTOM)
 
     def initWindow(self):
-        self.resize(900, 700)
+        self.resize(960, 650)
         self.setWindowIcon(QIcon(':/qfluentwidgets/images/logo.png'))
         self.setWindowTitle('IAP Host Computer')
 

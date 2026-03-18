@@ -29,11 +29,17 @@
             "PingFang SC"
         ],
         "ThemeColor": "#ff009faa",
-        "ThemeMode": "Auto"
+        "ThemeMode": "Dark"
     },
     "Online": {
         "MvQuality": "Full HD",
         "PageSize": 50,
         "SongQuality": "Standard quality"
+    },
+    "SerialPort": {
+        "DtrState": false,
+        "FontFamily": "FiraMono Nerd Font",
+        "FontSize": 10,
+        "RtsState": false
     }
 }

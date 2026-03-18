@@ -9,6 +9,37 @@ from qfluentwidgets import (qconfig, QConfig, ConfigItem, OptionsConfigItem, Boo
                             FolderListValidator, EnumSerializer, FolderValidator, ConfigSerializer, __version__)
 
 
+class BaudRate(Enum):
+    """ Serial baud rate enumeration """
+    BAUD_9600 = 9600
+    BAUD_19200 = 19200
+    BAUD_38400 = 38400
+    BAUD_57600 = 57600
+    BAUD_115200 = 115200
+
+
+class DataBits(Enum):
+    """ Serial data bits enumeration """
+    DATA_5 = 5
+    DATA_6 = 6
+    DATA_7 = 7
+    DATA_8 = 8
+
+
+class StopBits(Enum):
+    """ Serial stop bits enumeration """
+    ONE = 1
+    ONE_POINT_FIVE = 1.5
+    TWO = 2
+
+
+class Parity(Enum):
+    """ Serial parity enumeration """
+    NONE = "None"
+    EVEN = "Even"
+    ODD = "Odd"
+
+
 class SongQuality(Enum):
     """ Online song quality enumeration class """
 
@@ -93,6 +124,29 @@ class Config(QConfig):
     # software update
     checkUpdateAtStartUp = ConfigItem(
         "Update", "CheckUpdateAtStartUp", True, BoolValidator())
+
+    # serial port settings
+    serialFontSize = RangeConfigItem(
+        "SerialPort", "FontSize", 10, RangeValidator(4, 100))
+    serialFontFamily = ConfigItem(
+        "SerialPort", "FontFamily", "Consolas")
+    serialDtrState = ConfigItem(
+        "SerialPort", "DtrState", False, BoolValidator())
+    serialRtsState = ConfigItem(
+        "SerialPort", "RtsState", False, BoolValidator())
+
+    @property
+    def serialFont(self):
+        """ get the serial port font """
+        font = QFont(self.serialFontFamily.value)
+        font.setPointSize(self.serialFontSize.value)
+        return font
+
+    @serialFont.setter
+    def serialFont(self, font: QFont):
+        self.serialFontFamily.value = font.family()
+        self.serialFontSize.value = font.pointSize()
+        self.save()
 
     @property
     def desktopLyricFont(self):
