@@ -6,7 +6,7 @@ import serial
 import serial.tools.list_ports
 from serial import Serial, SerialException
 from PyQt5.QtGui import QFont, QKeyEvent, QTextCursor
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QObject
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QObject, QPropertyAnimation, QEasingCurve, QRect
 from PyQt5.QtWidgets import (
     QApplication,
     QWidget,
@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
     QAction,
     QFileDialog,
     QFontDialog,
+    QGraphicsOpacityEffect,
 )
 
 from qfluentwidgets import (
@@ -267,14 +268,61 @@ class Serial_Tools_Widget(QWidget):
 
     def _on_pivot_changed(self, key):
         self.stackedWidget.setCurrentWidget(self.findChild(QWidget, key))
-        self._update_left_panel_width()
+        if self.stackedWidget.currentWidget() == self.more_setting:
+            self.more_setting.hide()
+        QTimer.singleShot(250, self._update_left_panel_width)
 
     def _update_left_panel_width(self):
         current_widget = self.stackedWidget.currentWidget()
         if current_widget == self.serial_setting:
-            self.stackedWidget.setFixedWidth(185)
+            target_width = 185
         else:
-            self.stackedWidget.setFixedWidth(260)
+            target_width = 260
+
+        current_width = self.stackedWidget.width()
+
+        if not hasattr(self, '_min_width_animation'):
+            self._min_width_animation = QPropertyAnimation(self.stackedWidget, b"minimumWidth")
+            self._min_width_animation.setDuration(200)
+            self._min_width_animation.setEasingCurve(QEasingCurve.InOutCubic)
+            
+            self._max_width_animation = QPropertyAnimation(self.stackedWidget, b"maximumWidth")
+            self._max_width_animation.setDuration(200)
+            self._max_width_animation.setEasingCurve(QEasingCurve.InOutCubic)
+            self._max_width_animation.finished.connect(self._on_animation_finished)
+
+        self._min_width_animation.stop()
+        self._max_width_animation.stop()
+        
+        self._min_width_animation.setStartValue(current_width)
+        self._min_width_animation.setEndValue(target_width)
+        self._max_width_animation.setStartValue(current_width)
+        self._max_width_animation.setEndValue(target_width)
+        
+        self._min_width_animation.start()
+        self._max_width_animation.start()
+
+    def _on_animation_finished(self):
+        current_widget = self.stackedWidget.currentWidget()
+        if current_widget == self.more_setting:
+            self._start_fade_in_animation()
+
+    def _start_fade_in_animation(self):
+        if not hasattr(self, '_opacity_effect'):
+            self._opacity_effect = QGraphicsOpacityEffect(self.more_setting)
+            self.more_setting.setGraphicsEffect(self._opacity_effect)
+            
+            self._fade_animation = QPropertyAnimation(self._opacity_effect, b"opacity")
+            self._fade_animation.setDuration(150)
+            self._fade_animation.setEasingCurve(QEasingCurve.InOutCubic)
+        
+        self._opacity_effect.setOpacity(0)
+        self.more_setting.show()
+        
+        self._fade_animation.stop()
+        self._fade_animation.setStartValue(0)
+        self._fade_animation.setEndValue(1)
+        self._fade_animation.start()
 
     def init_receive_bar_ui(self):
         self.receive_bar_vBoxLayout = QVBoxLayout()

@@ -39,7 +39,7 @@
     "SerialPort": {
         "DtrState": false,
         "FontFamily": "FiraMono Nerd Font",
-        "FontSize": 10,
+        "FontSize": 11,
         "RtsState": false
     }
 }

@@ -2,12 +2,12 @@
 import sys
 import os
 
-from PyQt5.QtCore import Qt, QUrl, QLocale, QTranslator
+from PyQt5.QtCore import Qt, QUrl, QLocale, QTranslator, QEventLoop, QTimer, QSize
 from PyQt5.QtGui import QIcon, QDesktopServices
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout
 from qfluentwidgets import (NavigationItemPosition, MessageBox, setTheme, Theme, FluentWindow,
                             NavigationAvatarWidget, SubtitleLabel, setFont, InfoBadge,
-                            InfoBadgePosition, FluentTranslator)
+                            InfoBadgePosition, FluentTranslator, SplashScreen)
 from qfluentwidgets import FluentIcon as FIF
 from serial_tools.serial_interface import Serial_Tools_Widget
 from settings.setting_interface import SettingInterface
@@ -39,14 +39,28 @@ class Window(FluentWindow):
         self.initNavigation()
         self.initWindow()
 
+        self.splashScreen = SplashScreen(self.windowIcon(), self)
+        self.splashScreen.setIconSize(QSize(102, 102))
+
+        self.show()
+        self.createSubInterface()
+        self.splashScreen.finish()
+
+        self.switchTo(self.serialInterface)
+
+    def createSubInterface(self):
+        loop = QEventLoop(self)
+        QTimer.singleShot(1000, loop.quit)
+        loop.exec()
+
     def initNavigation(self):
-        self.addSubInterface(self.homeInterface, FIF.HOME, 'Home')
         self.addSubInterface(self.serialInterface, FIF.DEVELOPER_TOOLS, 'Serial Port')
+        self.addSubInterface(self.homeInterface, FIF.HOME, 'Home')
         self.addSubInterface(self.settingInterface, FIF.SETTING, 'Settings', NavigationItemPosition.BOTTOM)
 
     def initWindow(self):
         self.resize(960, 650)
-        self.setWindowIcon(QIcon(':/qfluentwidgets/images/logo.png'))
+        self.setWindowIcon(QIcon('settings/resource/images/logo.png'))
         self.setWindowTitle('IAP Host Computer')
 
         desktop = QApplication.desktop().availableGeometry()
@@ -78,5 +92,4 @@ if __name__ == '__main__':
     app.installTranslator(settingTranslator)
 
     w = Window()
-    w.show()
     app.exec_()
