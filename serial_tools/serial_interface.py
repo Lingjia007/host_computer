@@ -1,11 +1,11 @@
 # coding:utf-8
 import sys
-import time
+import pyte
 from datetime import datetime
 import serial
 import serial.tools.list_ports
 from serial import Serial, SerialException
-from PyQt5.QtGui import QFont, QKeyEvent, QTextCursor
+from PyQt5.QtGui import QFont, QKeyEvent, QTextCursor, QColor, QTextCharFormat
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QObject, QPropertyAnimation, QEasingCurve, QRect
 from PyQt5.QtWidgets import (
     QApplication,
@@ -51,6 +51,117 @@ if config_path not in sys.path:
 from config import cfg
 
 
+class PyteTerminal:
+    def __init__(self, columns=80, rows=24):
+        self.columns = columns
+        self.rows = rows
+        self.screen = pyte.Screen(columns, rows)
+        self.stream = pyte.Stream(self.screen)
+        self._cursor_visible = True
+        
+    def feed(self, data):
+        if isinstance(data, bytes):
+            data = data.decode('utf-8', errors='replace')
+        self.stream.feed(data)
+        
+    def get_display(self):
+        lines = []
+        for y in range(self.rows):
+            line = ""
+            for x in range(self.columns):
+                char = self.screen.buffer[y][x]
+                line += char.data if char.data else " "
+            lines.append(line.rstrip())
+        while lines and not lines[-1]:
+            lines.pop()
+        return "\n".join(lines)
+    
+    def get_formatted_lines(self):
+        formatted_lines = []
+        for y in range(self.rows):
+            line_segments = []
+            current_text = ""
+            current_fg = None
+            current_bg = None
+            current_bold = False
+            current_underline = False
+            
+            for x in range(self.columns):
+                char = self.screen.buffer[y][x]
+                fg = self._color_to_hex(char.fg) if char.fg != "default" else None
+                bg = self._color_to_hex(char.bg) if char.bg != "default" else None
+                bold = char.bold if hasattr(char, 'bold') else False
+                underline = char.underline if hasattr(char, 'underline') else False
+                
+                if (fg != current_fg or bg != current_bg or 
+                    bold != current_bold or underline != current_underline):
+                    if current_text:
+                        line_segments.append({
+                            'text': current_text,
+                            'fg': current_fg,
+                            'bg': current_bg,
+                            'bold': current_bold,
+                            'underline': current_underline
+                        })
+                    current_text = char.data if char.data else " "
+                    current_fg = fg
+                    current_bg = bg
+                    current_bold = bold
+                    current_underline = underline
+                else:
+                    current_text += char.data if char.data else " "
+            
+            if current_text:
+                line_segments.append({
+                    'text': current_text.rstrip(),
+                    'fg': current_fg,
+                    'bg': current_bg,
+                    'bold': current_bold,
+                    'underline': current_underline
+                })
+            
+            if line_segments:
+                formatted_lines.append({'y': y, 'segments': line_segments})
+        
+        return formatted_lines
+    
+    def _color_to_hex(self, color):
+        color_map = {
+            'black': '#000000',
+            'red': '#cd0000',
+            'green': '#00cd00',
+            'brown': '#cdcd00',
+            'blue': '#0000ee',
+            'magenta': '#cd00cd',
+            'cyan': '#00cdcd',
+            'white': '#e5e5e5',
+            'brightblack': '#7f7f7f',
+            'brightred': '#ff0000',
+            'brightgreen': '#00ff00',
+            'brightyellow': '#ffff00',
+            'brightblue': '#5c5cff',
+            'brightmagenta': '#ff00ff',
+            'brightcyan': '#00ffff',
+            'brightwhite': '#ffffff',
+        }
+        if isinstance(color, str):
+            return color_map.get(color.lower(), color)
+        elif isinstance(color, tuple) and len(color) == 3:
+            return f'#{color[0]:02x}{color[1]:02x}{color[2]:02x}'
+        return None
+    
+    def get_cursor_position(self):
+        return (self.screen.cursor.x, self.screen.cursor.y)
+    
+    def clear(self):
+        self.screen.reset()
+        
+    def resize(self, columns, rows):
+        self.columns = columns
+        self.rows = rows
+        self.screen.resize(columns, rows)
+
+
 class PortComboBox(ComboBox):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -88,6 +199,8 @@ class TerminalTextEdit(PlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._terminal_mode = False
+        self._use_pyte = True
+        self._pyte_terminal = PyteTerminal(columns=120, rows=40)
         self._setup_font()
         self._setup_document()
 
@@ -106,6 +219,36 @@ class TerminalTextEdit(PlainTextEdit):
             cursor = self.textCursor()
             cursor.movePosition(cursor.End)
             self.setTextCursor(cursor)
+            self.setCursorWidth(self.fontMetrics().averageCharWidth())
+        else:
+            self.setCursorWidth(1)
+
+    def set_pyte_mode(self, enabled):
+        self._use_pyte = enabled
+        if enabled:
+            self._pyte_terminal.clear()
+
+    def feed_data(self, data):
+        if self._use_pyte and self._terminal_mode:
+            self._pyte_terminal.feed(data)
+            self._update_display()
+        else:
+            cursor = self.textCursor()
+            cursor.movePosition(cursor.End)
+            cursor.insertText(data)
+            self.setTextCursor(cursor)
+            self.ensureCursorVisible()
+
+    def _update_display(self):
+        self.setPlainText(self._pyte_terminal.get_display())
+        cursor = self.textCursor()
+        cursor.movePosition(cursor.End)
+        self.setTextCursor(cursor)
+
+    def clear_terminal(self):
+        if self._use_pyte:
+            self._pyte_terminal.clear()
+        self.clear()
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -128,25 +271,7 @@ class TerminalTextEdit(PlainTextEdit):
                 self.send_data.emit("\x7f")
                 return
             elif event.key() == Qt.Key_Delete:
-                self.send_data.emit("\x1b[3~")
-                return
-            elif event.key() == Qt.Key_Left:
-                self.send_data.emit("\x1b[D")
-                return
-            elif event.key() == Qt.Key_Right:
-                self.send_data.emit("\x1b[C")
-                return
-            elif event.key() == Qt.Key_Home:
-                self.send_data.emit("\x1b[H")
-                return
-            elif event.key() == Qt.Key_End:
-                self.send_data.emit("\x1b[F")
-                return
-            elif event.key() == Qt.Key_Up:
-                self.send_data.emit("\x1b[A")
-                return
-            elif event.key() == Qt.Key_Down:
-                self.send_data.emit("\x1b[B")
+                self.send_data.emit("\x7f")
                 return
             text = event.text()
             if text:
@@ -157,6 +282,7 @@ class TerminalTextEdit(PlainTextEdit):
 
 class Serial_Data_Reader_Thread(QThread):
     data_received = pyqtSignal(str)
+    raw_data_received = pyqtSignal(bytes)
     hex_data_received = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
 
@@ -165,6 +291,7 @@ class Serial_Data_Reader_Thread(QThread):
         self.serial_port = serial_port
         self.running = True
         self._text_buffer = ""
+        self._raw_buffer = b""
         self._hex_buffer = ""
         self._buffer_timer = QTimer()
         self._buffer_timer.timeout.connect(self._flush_buffer)
@@ -175,6 +302,9 @@ class Serial_Data_Reader_Thread(QThread):
         if self._text_buffer:
             self.data_received.emit(self._text_buffer)
             self._text_buffer = ""
+        if self._raw_buffer:
+            self.raw_data_received.emit(self._raw_buffer)
+            self._raw_buffer = b""
         if self._hex_buffer:
             self.hex_data_received.emit(self._hex_buffer)
             self._hex_buffer = ""
@@ -188,6 +318,7 @@ class Serial_Data_Reader_Thread(QThread):
             try:
                 if self.serial_port.in_waiting > 0:
                     data = self.serial_port.read(self.serial_port.in_waiting)
+                    self._raw_buffer += data
                     decoded_text = data.decode('utf-8', errors='replace')
                     decoded_text = decoded_text.replace('\r\n', '\n').replace('\r', '\n')
                     self._text_buffer += decoded_text
@@ -637,7 +768,7 @@ class Serial_Tools_Widget(QWidget):
                 )
 
     def on_text_clicked(self):
-        self.reception_area_text.clear()
+        self.reception_area_text.clear_terminal()
         self._text_cleared = False
         self.show_success_info_bar("接收栏：", "已清空文本区", 1000)
 
@@ -647,10 +778,8 @@ class Serial_Tools_Widget(QWidget):
         self.show_success_info_bar("接收栏：", "已清空Hex区", 1000)
 
     def on_receive_clicked(self):
-        self.reception_area_text.clear()
+        self.reception_area_text.clear_terminal()
         self.reception_area_Hex_text.clear()
-        self.reception_area_text.setMarkdown("# Text Mode \n")
-        self.reception_area_Hex_text.setMarkdown("# Hex Mode \n")
         self._text_cleared = False
         self._hex_cleared = False
         self.show_success_info_bar("接收栏：", "已清空接收区", 1000)
@@ -718,6 +847,9 @@ class Serial_Tools_Widget(QWidget):
                 self.data_read_thread.data_received.connect(
                     self.on_text_data_received
                 )
+                self.data_read_thread.raw_data_received.connect(
+                    self.on_raw_data_received
+                )
                 self.data_read_thread.hex_data_received.connect(
                     self.on_hex_data_received
                 )
@@ -753,12 +885,15 @@ class Serial_Tools_Widget(QWidget):
             reset_button_and_close_serial()
 
     def on_text_data_received(self, text_data):
+        if self.reception_area_text._terminal_mode:
+            return
+        
         if not self._text_cleared:
             self.reception_area_text.clear()
             self._text_cleared = True
         
         display_text = text_data
-        if self.timestamp_checkBox.isChecked() and not self.reception_area_text._terminal_mode:
+        if self.timestamp_checkBox.isChecked():
             now = datetime.now()
             timestamp = now.strftime("%H:%M:%S.") + f"{now.microsecond // 1000:03d}"
             display_text = f"[{timestamp}] {text_data}"
@@ -768,6 +903,13 @@ class Serial_Tools_Widget(QWidget):
         cursor.insertText(display_text)
         self.reception_area_text.setTextCursor(cursor)
         self.reception_area_text.ensureCursorVisible()
+
+    def on_raw_data_received(self, raw_data):
+        if self.reception_area_text._terminal_mode:
+            if not self._text_cleared:
+                self.reception_area_text.clear_terminal()
+                self._text_cleared = True
+            self.reception_area_text.feed_data(raw_data)
 
     def on_hex_data_received(self, hex_data):
         if not self._hex_cleared:
@@ -784,6 +926,7 @@ class Serial_Tools_Widget(QWidget):
         cursor.movePosition(cursor.End)
         cursor.insertText(display_hex)
         self.reception_area_Hex_text.setTextCursor(cursor)
+        self.reception_area_Hex_text.ensureCursorVisible()
 
     def on_export_clicked(self):
         if self.textMode_checkBox.isChecked():
