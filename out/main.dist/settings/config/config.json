@@ -1,0 +1,45 @@
+{
+    "Update": {
+        "CheckUpdateAtStartUp": true
+    },
+    "DesktopLyric": {
+        "Alignment": "Center",
+        "FontFamily": "微软雅黑",
+        "FontSize": 50,
+        "HighlightColor": "#ff0099bc",
+        "StrokeColor": "#ff000000",
+        "StrokeSize": 14
+    },
+    "Folders": {
+        "Download": "D:/BaiduNetdiskDownload/IAP_host_computer/host_computer_project/settings/download",
+        "LocalMusic": []
+    },
+    "MainWindow": {
+        "DpiScale": "Auto",
+        "EnableAcrylicBackground": false,
+        "Language": "Auto",
+        "MinimizeToTray": true,
+        "PlayBarColor": "#ff225c7f",
+        "RecentPlayNumbers": 300
+    },
+    "QFluentWidgets": {
+        "FontFamilies": [
+            "Segoe UI",
+            "Microsoft YaHei",
+            "PingFang SC"
+        ],
+        "ThemeColor": "#ff009faa",
+        "ThemeMode": "Dark"
+    },
+    "Online": {
+        "MvQuality": "Full HD",
+        "PageSize": 50,
+        "SongQuality": "Standard quality"
+    },
+    "SerialPort": {
+        "DtrState": false,
+        "FontFamily": "FiraMono Nerd Font",
+        "FontSize": 11,
+        "RtsState": false
+    }
+}
