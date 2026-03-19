@@ -56,7 +56,27 @@ class Window(FluentWindow):
     def initNavigation(self):
         self.addSubInterface(self.serialInterface, FIF.DEVELOPER_TOOLS, 'Serial Port')
         self.addSubInterface(self.homeInterface, FIF.HOME, 'Home')
+
+        self.navigationInterface.addWidget(
+            routeKey='avatar',
+            widget=NavigationAvatarWidget('Lingsir007', 'settings/resource/images/lingsir007.png'),
+            onClick=self.showMessageBox,
+            position=NavigationItemPosition.BOTTOM,
+        )
+
         self.addSubInterface(self.settingInterface, FIF.SETTING, 'Settings', NavigationItemPosition.BOTTOM)
+
+    def showMessageBox(self):
+        w = MessageBox(
+            '支持作者🥰',
+            '个人开发不易，如果这个项目帮助到了您，可以考虑请作者喝一瓶快乐水🥤。您的支持就是作者开发和维护项目的动力🚀。',
+            self
+        )
+        w.yesButton.setText('确定')
+        w.cancelButton.setText('取消')
+
+        if w.exec():
+            QDesktopServices.openUrl(QUrl("https://github.com/Lingjia007"))
 
     def initWindow(self):
         self.resize(960, 650)
