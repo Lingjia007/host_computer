@@ -45,10 +45,7 @@ from qfluentwidgets import (
 
 import os
 import sys
-config_path = os.path.join(os.path.dirname(__file__), '..', 'settings')
-if config_path not in sys.path:
-    sys.path.insert(0, config_path)
-from config import cfg
+from settings.config import cfg
 
 
 class PyteTerminal:
