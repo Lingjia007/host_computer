@@ -876,9 +876,12 @@ class Serial_Tools_Widget(QWidget):
         else:
             # 断开信号连接
             if hasattr(self, "data_read_thread") and self.data_read_thread is not None:
-                self.data_read_thread.hex_data_received.disconnect(
-                    self.on_hex_data_received
-                )
+                try:
+                    self.data_read_thread.hex_data_received.disconnect(
+                        self.on_hex_data_received
+                    )
+                except TypeError:
+                    pass
             reset_button_and_close_serial()
 
     def on_text_data_received(self, text_data):
@@ -1002,7 +1005,10 @@ class Serial_Tools_Widget(QWidget):
     def _handle_serial_unplugged(self):
         if hasattr(self, "data_read_thread") and self.data_read_thread is not None:
             self.data_read_thread.running = False
-            self.data_read_thread.hex_data_received.disconnect(self.on_hex_data_received)
+            try:
+                self.data_read_thread.hex_data_received.disconnect(self.on_hex_data_received)
+            except TypeError:
+                pass
             self.data_read_thread = None
 
         if self.serial_port is not None:
