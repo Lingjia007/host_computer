@@ -140,6 +140,8 @@ class Config(QConfig):
         """ get the serial port font """
         font = QFont(self.serialFontFamily.value)
         font.setPointSize(self.serialFontSize.value)
+        font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
+        font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias | QFont.StyleStrategy.PreferQuality)
         return font
 
     @serialFont.setter

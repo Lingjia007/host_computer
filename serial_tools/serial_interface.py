@@ -203,6 +203,8 @@ class TerminalTextEdit(PlainTextEdit):
     def _setup_font(self):
         font = QFont("FiraMono Nerd Font", 10)
         font.setStyleHint(QFont.StyleHint.Monospace)
+        font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
+        font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias | QFont.StyleStrategy.PreferQuality)
         self.setFont(font)
 
     def _setup_document(self):
@@ -467,6 +469,8 @@ class Serial_Tools_Widget(QWidget):
         self.reception_area_Hex_text = PlainTextEdit()
         font = QFont("FiraMono Nerd Font", 10)
         font.setStyleHint(QFont.StyleHint.Monospace)
+        font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
+        font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias | QFont.StyleStrategy.PreferQuality)
         self.reception_area_Hex_text.setFont(font)
         self.reception_area_text_hLayout.addWidget(self.reception_area_Hex_text)
         self.reception_area_Hex_text.setReadOnly(True)

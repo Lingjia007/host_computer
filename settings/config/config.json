@@ -11,7 +11,7 @@
         "StrokeSize": 17
     },
     "Folders": {
-        "Download": "D:/BaiduNetdiskDownload/IAP_host_computer/host_computer_project/settings/download",
+        "Download": "C:/Users/31254/Downloads",
         "LocalMusic": []
     },
     "MainWindow": {
@@ -39,7 +39,7 @@
     "SerialPort": {
         "DtrState": false,
         "FontFamily": "FiraMono Nerd Font",
-        "FontSize": 11,
+        "FontSize": 12,
         "RtsState": false
     }
 }

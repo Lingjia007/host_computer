@@ -11,8 +11,10 @@
         "StrokeSize": 17
     },
     "Folders": {
-        "Download": "D:/BaiduNetdiskDownload/IAP_host_computer/host_computer_project/settings/download",
-        "LocalMusic": []
+        "Download": "C:/Users/31254/Downloads",
+        "LocalMusic": [
+            "C:/Users/31254/Downloads"
+        ]
     },
     "MainWindow": {
         "DpiScale": "Auto",
