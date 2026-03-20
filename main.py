@@ -2,9 +2,9 @@
 import sys
 import os
 
-from PyQt5.QtCore import Qt, QUrl, QLocale, QTranslator, QEventLoop, QTimer, QSize
-from PyQt5.QtGui import QIcon, QDesktopServices
-from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout
+from PyQt6.QtCore import Qt, QUrl, QLocale, QTranslator, QEventLoop, QTimer, QSize
+from PyQt6.QtGui import QIcon, QDesktopServices
+from PyQt6.QtWidgets import QApplication, QWidget, QHBoxLayout
 from qfluentwidgets import (NavigationItemPosition, MessageBox, setTheme, Theme, FluentWindow,
                             NavigationAvatarWidget, SubtitleLabel, setFont, InfoBadge,
                             InfoBadgePosition, FluentTranslator, SplashScreen)
@@ -22,8 +22,8 @@ class Widget(QWidget):
         self.hBoxLayout = QHBoxLayout(self)
 
         setFont(self.label, 24)
-        self.label.setAlignment(Qt.AlignCenter)
-        self.hBoxLayout.addWidget(self.label, 1, Qt.AlignCenter)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.hBoxLayout.addWidget(self.label, 1, Qt.AlignmentFlag.AlignCenter)
         self.setObjectName(text.replace(' ', '-'))
 
 
@@ -83,24 +83,23 @@ class Window(FluentWindow):
         self.setWindowIcon(QIcon('settings/resource/images/logo.png'))
         self.setWindowTitle('IAP Host Computer')
 
-        desktop = QApplication.desktop().availableGeometry()
-        w, h = desktop.width(), desktop.height()
-        self.move(w//2 - self.width()//2, h//2 - self.height()//2)
+        from PyQt6.QtGui import QGuiApplication
+        screen = QGuiApplication.primaryScreen()
+        if screen:
+            desktop = screen.availableGeometry()
+            w, h = desktop.width(), desktop.height()
+            self.move(w//2 - self.width()//2, h//2 - self.height()//2)
 
 
 if __name__ == '__main__':
     if cfg.get(cfg.dpiScale) == "Auto":
         QApplication.setHighDpiScaleFactorRoundingPolicy(
             Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
-        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     else:
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
         os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
 
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
-
     app = QApplication(sys.argv)
-    app.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
 
     locale = cfg.get(cfg.language).value
     fluentTranslator = FluentTranslator(locale)
@@ -112,4 +111,4 @@ if __name__ == '__main__':
     app.installTranslator(settingTranslator)
 
     w = Window()
-    app.exec_()
+    app.exec()

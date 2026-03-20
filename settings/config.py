@@ -2,8 +2,8 @@
 import os
 from enum import Enum
 
-from PyQt5.QtCore import Qt, QLocale
-from PyQt5.QtGui import QGuiApplication, QFont
+from PyQt6.QtCore import Qt, QLocale
+from PyQt6.QtGui import QGuiApplication, QFont
 from qfluentwidgets import (qconfig, QConfig, ConfigItem, OptionsConfigItem, BoolValidator,
                             ColorConfigItem, OptionsValidator, RangeConfigItem, RangeValidator,
                             FolderListValidator, EnumSerializer, FolderValidator, ConfigSerializer, __version__)
@@ -61,9 +61,9 @@ class MvQuality(Enum):
 class Language(Enum):
     """ Language enumeration """
 
-    CHINESE_SIMPLIFIED = QLocale(QLocale.Chinese, QLocale.China)
-    CHINESE_TRADITIONAL = QLocale(QLocale.Chinese, QLocale.HongKong)
-    ENGLISH = QLocale(QLocale.English)
+    CHINESE_SIMPLIFIED = QLocale(QLocale.Language.Chinese, QLocale.Country.China)
+    CHINESE_TRADITIONAL = QLocale(QLocale.Language.Chinese, QLocale.Country.HongKong)
+    ENGLISH = QLocale(QLocale.Language.English)
     AUTO = QLocale()
 
 
@@ -115,7 +115,7 @@ class Config(QConfig):
     deskLyricStrokeSize = RangeConfigItem(
         "DesktopLyric", "StrokeSize", 5, RangeValidator(0, 20))
     deskLyricStrokeColor = ColorConfigItem(
-        "DesktopLyric", "StrokeColor", Qt.black)
+        "DesktopLyric", "StrokeColor", Qt.GlobalColor.black)
     deskLyricFontFamily = ConfigItem(
         "DesktopLyric", "FontFamily", "Microsoft YaHei")
     deskLyricAlignment = OptionsConfigItem(
@@ -153,13 +153,24 @@ class Config(QConfig):
         """ get the desktop lyric font """
         font = QFont(self.deskLyricFontFamily.value)
         font.setPixelSize(self.deskLyricFontSize.value)
+        dpi = QGuiApplication.primaryScreen().logicalDotsPerInch()
+        point_size = max(1, int(self.deskLyricFontSize.value * 72 / dpi))
+        font.setPointSize(point_size)
         return font
 
     @desktopLyricFont.setter
     def desktopLyricFont(self, font: QFont):
         dpi = QGuiApplication.primaryScreen().logicalDotsPerInch()
         self.deskLyricFontFamily.value = font.family()
-        self.deskLyricFontSize.value = max(15, int(font.pointSize()*dpi/72))
+        point_size = font.pointSize()
+        if point_size > 0:
+            self.deskLyricFontSize.value = max(15, int(point_size * dpi / 72))
+        else:
+            pixel_size = font.pixelSize()
+            if pixel_size > 0:
+                self.deskLyricFontSize.value = max(15, pixel_size)
+            else:
+                self.deskLyricFontSize.value = 50
         self.save()
 
 

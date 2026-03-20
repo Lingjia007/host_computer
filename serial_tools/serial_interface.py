@@ -5,16 +5,15 @@ from datetime import datetime
 import serial
 import serial.tools.list_ports
 from serial import Serial, SerialException
-from PyQt5.QtGui import QFont, QKeyEvent, QTextCursor, QColor, QTextCharFormat
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QObject, QPropertyAnimation, QEasingCurve, QRect
-from PyQt5.QtWidgets import (
+from PyQt6.QtGui import QFont, QKeyEvent, QTextCursor, QColor, QTextCharFormat, QAction
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QObject, QPropertyAnimation, QEasingCurve, QRect
+from PyQt6.QtWidgets import (
     QApplication,
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QStackedWidget,
     QLabel,
-    QAction,
     QFileDialog,
     QFontDialog,
     QGraphicsOpacityEffect,
@@ -203,7 +202,7 @@ class TerminalTextEdit(PlainTextEdit):
 
     def _setup_font(self):
         font = QFont("FiraMono Nerd Font", 10)
-        font.setStyleHint(QFont.Monospace)
+        font.setStyleHint(QFont.StyleHint.Monospace)
         self.setFont(font)
 
     def _setup_document(self):
@@ -214,7 +213,7 @@ class TerminalTextEdit(PlainTextEdit):
         self._terminal_mode = enabled
         if enabled:
             cursor = self.textCursor()
-            cursor.movePosition(cursor.End)
+            cursor.movePosition(QTextCursor.MoveOperation.End)
             self.setTextCursor(cursor)
             self.setCursorWidth(self.fontMetrics().averageCharWidth())
         else:
@@ -231,7 +230,7 @@ class TerminalTextEdit(PlainTextEdit):
             self._update_display()
         else:
             cursor = self.textCursor()
-            cursor.movePosition(cursor.End)
+            cursor.movePosition(QTextCursor.MoveOperation.End)
             cursor.insertText(data)
             self.setTextCursor(cursor)
             self.ensureCursorVisible()
@@ -239,7 +238,7 @@ class TerminalTextEdit(PlainTextEdit):
     def _update_display(self):
         self.setPlainText(self._pyte_terminal.get_display())
         cursor = self.textCursor()
-        cursor.movePosition(cursor.End)
+        cursor.movePosition(QTextCursor.MoveOperation.End)
         self.setTextCursor(cursor)
 
     def clear_terminal(self):
@@ -261,13 +260,13 @@ class TerminalTextEdit(PlainTextEdit):
 
     def keyPressEvent(self, event: QKeyEvent):
         if self._terminal_mode:
-            if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
                 self.send_data.emit("\r")
                 return
-            elif event.key() == Qt.Key_Backspace:
+            elif event.key() == Qt.Key.Key_Backspace:
                 self.send_data.emit("\x7f")
                 return
-            elif event.key() == Qt.Key_Delete:
+            elif event.key() == Qt.Key.Key_Delete:
                 self.send_data.emit("\x7f")
                 return
             text = event.text()
@@ -412,11 +411,11 @@ class Serial_Tools_Widget(QWidget):
         if not hasattr(self, '_min_width_animation'):
             self._min_width_animation = QPropertyAnimation(self.stackedWidget, b"minimumWidth")
             self._min_width_animation.setDuration(200)
-            self._min_width_animation.setEasingCurve(QEasingCurve.InOutCubic)
+            self._min_width_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
             
             self._max_width_animation = QPropertyAnimation(self.stackedWidget, b"maximumWidth")
             self._max_width_animation.setDuration(200)
-            self._max_width_animation.setEasingCurve(QEasingCurve.InOutCubic)
+            self._max_width_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
             self._max_width_animation.finished.connect(self._on_animation_finished)
 
         self._min_width_animation.stop()
@@ -442,7 +441,7 @@ class Serial_Tools_Widget(QWidget):
             
             self._fade_animation = QPropertyAnimation(self._opacity_effect, b"opacity")
             self._fade_animation.setDuration(150)
-            self._fade_animation.setEasingCurve(QEasingCurve.InOutCubic)
+            self._fade_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
         
         self._opacity_effect.setOpacity(0)
         self.more_setting.show()
@@ -467,7 +466,7 @@ class Serial_Tools_Widget(QWidget):
         self._hex_cleared = False
         self.reception_area_Hex_text = PlainTextEdit()
         font = QFont("FiraMono Nerd Font", 10)
-        font.setStyleHint(QFont.Monospace)
+        font.setStyleHint(QFont.StyleHint.Monospace)
         self.reception_area_Hex_text.setFont(font)
         self.reception_area_text_hLayout.addWidget(self.reception_area_Hex_text)
         self.reception_area_Hex_text.setReadOnly(True)
@@ -757,7 +756,7 @@ class Serial_Tools_Widget(QWidget):
                 InfoBar.error(
                     title="发送失败：",
                     content=str(e),
-                    orient=Qt.Horizontal,
+                    orient=Qt.Orientation.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
                     duration=3000,
@@ -800,7 +799,7 @@ class Serial_Tools_Widget(QWidget):
                     InfoBar.info(
                         title="串口已断开连接:",
                         content=f"串口-{current_port_text}",
-                        orient=Qt.Horizontal,
+                        orient=Qt.Orientation.Horizontal,
                         isClosable=True,
                         position=InfoBarPosition.TOP,
                         duration=2000,
@@ -813,7 +812,7 @@ class Serial_Tools_Widget(QWidget):
                 InfoBar.warning(
                     title="当前串口号为空:",
                     content="请先连接或选择一个有效的串口",
-                    orient=Qt.Horizontal,
+                    orient=Qt.Orientation.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
                     duration=2000,
@@ -854,7 +853,7 @@ class Serial_Tools_Widget(QWidget):
                 InfoBar.success(
                     title="串口已成功连接:",
                     content=f"串口-{current_port_text.split(':')[0]}",
-                    orient=Qt.Horizontal,
+                    orient=Qt.Orientation.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
                     duration=2000,
@@ -865,7 +864,7 @@ class Serial_Tools_Widget(QWidget):
                 InfoBar.error(
                     title="串口连接失败:",
                     content="当前串口已被占用或不可用",
-                    orient=Qt.Horizontal,
+                    orient=Qt.Orientation.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.BOTTOM_RIGHT,
                     duration=15000,
@@ -899,7 +898,7 @@ class Serial_Tools_Widget(QWidget):
             display_text = f"[{timestamp}] {text_data}"
         
         cursor = self.reception_area_text.textCursor()
-        cursor.movePosition(cursor.End)
+        cursor.movePosition(QTextCursor.MoveOperation.End)
         cursor.insertText(display_text)
         self.reception_area_text.setTextCursor(cursor)
         self.reception_area_text.ensureCursorVisible()
@@ -923,7 +922,7 @@ class Serial_Tools_Widget(QWidget):
             display_hex = f"[{timestamp}] {hex_data}"
         
         cursor = self.reception_area_Hex_text.textCursor()
-        cursor.movePosition(cursor.End)
+        cursor.movePosition(QTextCursor.MoveOperation.End)
         cursor.insertText(display_hex)
         self.reception_area_Hex_text.setTextCursor(cursor)
         self.reception_area_Hex_text.ensureCursorVisible()
@@ -952,7 +951,7 @@ class Serial_Tools_Widget(QWidget):
                 InfoBar.error(
                     title="导出失败：",
                     content=str(e),
-                    orient=Qt.Horizontal,
+                    orient=Qt.Orientation.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
                     duration=3000,
@@ -1025,7 +1024,7 @@ class Serial_Tools_Widget(QWidget):
         InfoBar.warning(
             title="串口已断开",
             content="当前连接的串口已被拔出",
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=3000,
@@ -1037,7 +1036,7 @@ class Serial_Tools_Widget(QWidget):
         InfoBar.success(
             title="检测到新串口",
             content=f"新增：<br>{'<br>'.join(numbered_ports)}",
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=2000,
@@ -1048,7 +1047,7 @@ class Serial_Tools_Widget(QWidget):
         InfoBar.warning(
             title="检测到串口移除",
             content=f"已移除：{', '.join(removed_ports)}",
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=2000,
@@ -1070,7 +1069,7 @@ class Serial_Tools_Widget(QWidget):
         InfoBar.success(
             title=title,
             content=content,
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=duration,
@@ -1081,7 +1080,7 @@ class Serial_Tools_Widget(QWidget):
         InfoBar.error(
             title="串口连接失败:",
             content=error_message,
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.BOTTOM_RIGHT,
             duration=15000,
@@ -1095,12 +1094,14 @@ class Serial_Tools_Widget(QWidget):
 
 
 if __name__ == "__main__":
-    QApplication.setHighDpiScaleFactorRoundingPolicy(
-        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+    if cfg.get(cfg.dpiScale) == "Auto":
+        QApplication.setHighDpiScaleFactorRoundingPolicy(
+            Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    else:
+        os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
+        os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
+
     app = QApplication(sys.argv)
     w = Serial_Tools_Widget()
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

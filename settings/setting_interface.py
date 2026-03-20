@@ -13,9 +13,9 @@ from qfluentwidgets import (SettingCardGroup, SwitchSettingCard, FolderListSetti
                             ComboBoxSettingCard, ExpandLayout, Theme, InfoBar, CustomColorSettingCard,
                             setTheme, setThemeColor, isDarkTheme)
 from qfluentwidgets import FluentIcon as FIF
-from PyQt5.QtCore import Qt, pyqtSignal, QUrl, QStandardPaths
-from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtWidgets import QWidget, QLabel, QFontDialog, QFileDialog
+from PyQt6.QtCore import Qt, pyqtSignal, QUrl, QStandardPaths
+from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtWidgets import QWidget, QLabel, QFontDialog, QFileDialog
 
 
 class SettingInterface(ScrollArea):
@@ -42,7 +42,7 @@ class SettingInterface(ScrollArea):
         self.musicFolderCard = FolderListSettingCard(
             cfg.musicFolders,
             self.tr("Local music library"),
-            directory=QStandardPaths.writableLocation(QStandardPaths.MusicLocation),
+            directory=QStandardPaths.writableLocation(QStandardPaths.StandardLocation.MusicLocation),
             parent=self.musicInThisPCGroup
         )
         self.downloadFolderCard = PushSettingCard(
@@ -216,7 +216,7 @@ class SettingInterface(ScrollArea):
 
     def __initWidget(self):
         self.resize(1000, 800)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setViewportMargins(0, 120, 0, 20)
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
