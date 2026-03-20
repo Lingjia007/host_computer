@@ -863,6 +863,8 @@ class Serial_Tools_Widget(QWidget):
                     duration=2000,
                     parent=self,
                 )
+                self.reception_area_text.setFocus()
+                self.reception_area_text.activateWindow()
             except Exception as e:
                 print(f"串口打开失败: {e}")
                 InfoBar.error(

@@ -48,6 +48,10 @@ class Window(FluentWindow):
 
         self.switchTo(self.serialInterface)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        print(f"Main Window Size: {self.width()} x {self.height()}")
+
     def createSubInterface(self):
         loop = QEventLoop(self)
         QTimer.singleShot(1000, loop.quit)
@@ -79,7 +83,7 @@ class Window(FluentWindow):
             QDesktopServices.openUrl(QUrl("https://github.com/Lingjia007"))
 
     def initWindow(self):
-        self.resize(960, 650)
+        self.resize(1055, 745)
         self.setWindowIcon(QIcon('settings/resource/images/logo.png'))
         self.setWindowTitle('IAP Host Computer')
 
