@@ -12,9 +12,7 @@
     },
     "Folders": {
         "Download": "C:/Users/31254/Downloads",
-        "LocalMusic": [
-            "C:/Users/31254/Downloads"
-        ]
+        "LocalMusic": []
     },
     "MainWindow": {
         "DpiScale": "Auto",
@@ -41,7 +39,8 @@
     "SerialPort": {
         "DtrState": false,
         "FontFamily": "FiraMono Nerd Font",
-        "FontSize": 11,
-        "RtsState": false
+        "FontSize": 13,
+        "RtsState": false,
+        "SendFontSize": 13
     }
 }
