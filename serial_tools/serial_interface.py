@@ -395,6 +395,11 @@ class Serial_Tools_Widget(QWidget):
         self._load_config()
         self._update_left_panel_width()
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, '_opacity_effect') and self._opacity_effect:
+            self._refresh_opacity_effect()
+
     def _on_pivot_changed(self, key):
         self.stackedWidget.setCurrentWidget(self.findChild(QWidget, key))
         if self.stackedWidget.currentWidget() == self.more_setting:
@@ -452,6 +457,20 @@ class Serial_Tools_Widget(QWidget):
         self._fade_animation.setStartValue(0)
         self._fade_animation.setEndValue(1)
         self._fade_animation.start()
+
+    def _refresh_opacity_effect(self):
+        if hasattr(self, '_opacity_effect') and self._opacity_effect:
+            if self.stackedWidget.currentWidget() == self.more_setting:
+                current_opacity = self._opacity_effect.opacity()
+                has_animation = hasattr(self, '_fade_animation')
+                if has_animation:
+                    self._fade_animation.stop()
+                self.more_setting.setGraphicsEffect(None)
+                self._opacity_effect = QGraphicsOpacityEffect(self.more_setting)
+                self._opacity_effect.setOpacity(current_opacity)
+                self.more_setting.setGraphicsEffect(self._opacity_effect)
+                if has_animation:
+                    self._fade_animation.setTargetObject(self._opacity_effect)
 
     def init_receive_bar_ui(self):
         self.receive_bar_vBoxLayout = QVBoxLayout()
