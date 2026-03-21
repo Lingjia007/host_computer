@@ -40,6 +40,7 @@
         "DtrState": false,
         "FontFamily": "FiraMono Nerd Font",
         "FontSize": 13,
-        "RtsState": false
+        "RtsState": false,
+        "SendFontSize": 13
     }
 }

@@ -278,6 +278,49 @@ class TerminalTextEdit(PlainTextEdit):
         super().keyPressEvent(event)
 
 
+class SendTextEdit(PlainTextEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._history = []
+        self._history_index = -1
+        self._current_text_before_history = ""
+
+    def add_to_history(self, text):
+        if text and text.strip():
+            if self._history and self._history[-1] == text:
+                return
+            self._history.append(text)
+            if len(self._history) > 100:
+                self._history.pop(0)
+            self._history_index = len(self._history)
+
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key.Key_Up:
+            if self._history:
+                if self._history_index == len(self._history):
+                    self._current_text_before_history = self.toPlainText()
+                if self._history_index > 0:
+                    self._history_index -= 1
+                    self.setPlainText(self._history[self._history_index])
+                    cursor = self.textCursor()
+                    cursor.movePosition(QTextCursor.MoveOperation.End)
+                    self.setTextCursor(cursor)
+            return
+        elif event.key() == Qt.Key.Key_Down:
+            if self._history:
+                if self._history_index < len(self._history) - 1:
+                    self._history_index += 1
+                    self.setPlainText(self._history[self._history_index])
+                else:
+                    self._history_index = len(self._history)
+                    self.setPlainText(self._current_text_before_history)
+                cursor = self.textCursor()
+                cursor.movePosition(QTextCursor.MoveOperation.End)
+                self.setTextCursor(cursor)
+            return
+        super().keyPressEvent(event)
+
+
 class Serial_Data_Reader_Thread(QThread):
     data_received = pyqtSignal(str)
     raw_data_received = pyqtSignal(bytes)
@@ -369,6 +412,7 @@ class Serial_Tools_Widget(QWidget):
         self.serial_setting_vBoxLayout.addStretch(1)
         self.Main_hLayout.addLayout(self.serial_setting_vBoxLayout)
         self.init_receive_bar_ui()
+        self.init_send_bar_ui()
         self.stackedWidget.setCurrentWidget(self.serial_setting)
         self.pivot.setCurrentItem("serial_setting")
         self.pivot.currentItemChanged.connect(self._on_pivot_changed)
@@ -473,13 +517,17 @@ class Serial_Tools_Widget(QWidget):
                     self._fade_animation.setTargetObject(self._opacity_effect)
 
     def init_receive_bar_ui(self):
-        self.receive_bar_vBoxLayout = QVBoxLayout()
+        self.right_vBoxLayout = QVBoxLayout()
+        self.right_vBoxLayout.setSpacing(0)
+        self.right_vBoxLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.receive_bar_widget = QWidget()
+        self.receive_bar_vBoxLayout = QVBoxLayout(self.receive_bar_widget)
 
         self.reception_area_text_hLayout = QHBoxLayout()
 
         self.reception_area_text = TerminalTextEdit()
         self.reception_area_text_hLayout.addWidget(self.reception_area_text)
-        self.receive_bar_vBoxLayout.addLayout(self.reception_area_text_hLayout)
         self.reception_area_text.setReadOnly(False)
         self.reception_area_text.set_terminal_mode(True)
         self.reception_area_text.send_data.connect(self.send_terminal_data)
@@ -494,6 +542,8 @@ class Serial_Tools_Widget(QWidget):
         self.reception_area_text_hLayout.addWidget(self.reception_area_Hex_text)
         self.reception_area_Hex_text.setReadOnly(True)
         self.reception_area_Hex_text.hide()
+
+        self.receive_bar_vBoxLayout.addLayout(self.reception_area_text_hLayout)
 
         self.receive_bar_button_hLayout = QHBoxLayout()
 
@@ -520,7 +570,6 @@ class Serial_Tools_Widget(QWidget):
         self.menu.addAction(clear_Hex_action)
         self.menu.addAction(clear_receive_action)
         self.receive_bar_clear_button.setMenu(self.menu)
-        # self.receive_bar_clear_button.setMaximumWidth(120)
         self.receive_bar_button_hLayout.addWidget(self.receive_bar_clear_button)
 
         self.reception_area_fontsize_spinBox = SpinBox()
@@ -531,17 +580,148 @@ class Serial_Tools_Widget(QWidget):
         )
         self.receive_bar_button_hLayout.addWidget(self.reception_area_fontsize_spinBox)
 
-        self.export_button = PushButton(FIF.SAVE, "导出TXT", self)
-        self.export_button.setMaximumWidth(100)
-        self.export_button.clicked.connect(self.on_export_clicked)
-        self.receive_bar_button_hLayout.addWidget(self.export_button)
-
         self.receive_bar_button_hLayout.addStretch(1)
+
+        self.export_button = DropDownPushButton(FIF.SAVE, "导出", self)
+        self.export_button.setFixedWidth(105)
+        self.export_menu = RoundMenu(parent=self)
+        export_text_action = QAction("导出文本区")
+        export_hex_action = QAction("导出Hex区")
+        export_text_action.triggered.connect(lambda: self.on_export_clicked("text"))
+        export_hex_action.triggered.connect(lambda: self.on_export_clicked("hex"))
+        self.export_menu.addAction(export_text_action)
+        self.export_menu.addAction(export_hex_action)
+        self.export_button.setMenu(self.export_menu)
+        self.receive_bar_button_hLayout.addWidget(self.export_button)
 
         self.receive_bar_vBoxLayout.addLayout(self.receive_bar_button_hLayout)
         self.receive_bar_vBoxLayout.setSpacing(10)
         self.receive_bar_vBoxLayout.setContentsMargins(0, 0, 0, 9)
-        self.Main_hLayout.addLayout(self.receive_bar_vBoxLayout, 1)
+
+        self.right_vBoxLayout.addWidget(self.receive_bar_widget, 5)
+        self.Main_hLayout.addLayout(self.right_vBoxLayout, 1)
+
+    def init_send_bar_ui(self):
+        self.send_bar_widget = QWidget()
+        self.send_bar_vBoxLayout = QVBoxLayout(self.send_bar_widget)
+
+        self.send_area_text = SendTextEdit()
+        self.send_area_text.setReadOnly(False)
+        font = QFont("Microsoft YaHei", 10)
+        font.setStyleHint(QFont.StyleHint.Monospace)
+        font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
+        font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias | QFont.StyleStrategy.PreferQuality)
+        self.send_area_text.setFont(font)
+        self.send_bar_vBoxLayout.addWidget(self.send_area_text)
+
+        self._send_hex_mode = False
+
+        self.send_bar_button_hLayout = QHBoxLayout()
+
+        self.send_format_combo = ComboBox()
+        self.send_format_combo.addItems(["文本发送", "Hex发送"])
+        self.send_format_combo.setCurrentIndex(0)
+        self.send_format_combo.setFixedWidth(100)
+        self.send_format_combo.currentIndexChanged.connect(self.on_send_format_changed)
+        self.send_bar_button_hLayout.addWidget(self.send_format_combo)
+
+        self.send_bar_clear_button = PushButton(FIF.DELETE, "清空", self)
+        self.send_bar_clear_button.clicked.connect(self.clear_send_area)
+        self.send_bar_button_hLayout.addWidget(self.send_bar_clear_button)
+
+        self.auto_clear_checkbox = CheckBox("自动清除", self)
+        self.auto_clear_checkbox.setChecked(False)
+        self.send_bar_button_hLayout.addWidget(self.auto_clear_checkbox)
+
+        self.send_area_fontsize_spinBox = SpinBox()
+        self.send_area_fontsize_spinBox.setRange(4, 100)
+        self.send_area_fontsize_spinBox.setValue(cfg.get(cfg.serialSendFontSize))
+        self.send_area_fontsize_spinBox.valueChanged.connect(
+            self.change_send_area_fontsize
+        )
+        self.send_bar_button_hLayout.addWidget(self.send_area_fontsize_spinBox)
+
+        self.send_bar_button_hLayout.addStretch(1)
+
+        self.send_button = PushButton(FIF.SEND, "发送", self)
+        self.send_button.setFixedWidth(105)
+        self.send_button.clicked.connect(self.on_send_clicked)
+        self.send_bar_button_hLayout.addWidget(self.send_button)
+
+        self.send_bar_vBoxLayout.addLayout(self.send_bar_button_hLayout)
+        self.send_bar_vBoxLayout.setSpacing(10)
+        self.send_bar_vBoxLayout.setContentsMargins(0, 0, 0, 9)
+
+        self.right_vBoxLayout.addWidget(self.send_bar_widget, 2)
+        self.send_bar_widget.hide()
+
+        self._send_bar_max_height = 0
+        self._setup_send_animation()
+
+    def _setup_send_animation(self):
+        self._send_bar_height_animation = QPropertyAnimation(self.send_bar_widget, b"maximumHeight")
+        self._send_bar_height_animation.setDuration(200)
+        self._send_bar_height_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        self._send_bar_height_animation.finished.connect(self._on_height_animation_finished)
+
+        self._send_bar_min_height_animation = QPropertyAnimation(self.send_bar_widget, b"minimumHeight")
+        self._send_bar_min_height_animation.setDuration(200)
+        self._send_bar_min_height_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
+
+        self._send_bar_opacity_effect = QGraphicsOpacityEffect(self.send_bar_widget)
+        self.send_bar_widget.setGraphicsEffect(self._send_bar_opacity_effect)
+        self._send_bar_opacity_effect.setOpacity(0)
+
+        self._send_bar_opacity_animation = QPropertyAnimation(self._send_bar_opacity_effect, b"opacity")
+        self._send_bar_opacity_animation.setDuration(200)
+        self._send_bar_opacity_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
+
+    def _on_height_animation_finished(self):
+        if self.send_bar_widget.maximumHeight() == 0:
+            self.send_bar_widget.hide()
+
+    def _show_send_bar_with_animation(self):
+        self.send_bar_widget.show()
+        self.send_bar_widget.setMaximumHeight(16777215)
+        
+        self.send_bar_widget.ensurePolished()
+        self._send_bar_max_height = self.send_bar_widget.sizeHint().height()
+        
+        self._send_bar_height_animation.stop()
+        self._send_bar_min_height_animation.stop()
+        self._send_bar_opacity_animation.stop()
+        
+        self.send_bar_widget.setMaximumHeight(0)
+        self.send_bar_widget.setMinimumHeight(0)
+        
+        self._send_bar_height_animation.setStartValue(0)
+        self._send_bar_height_animation.setEndValue(self._send_bar_max_height)
+        self._send_bar_min_height_animation.setStartValue(0)
+        self._send_bar_min_height_animation.setEndValue(self._send_bar_max_height)
+        self._send_bar_opacity_animation.setStartValue(0)
+        self._send_bar_opacity_animation.setEndValue(1)
+        
+        self._send_bar_height_animation.start()
+        self._send_bar_min_height_animation.start()
+        self._send_bar_opacity_animation.start()
+
+    def _hide_send_bar_with_animation(self):
+        current_height = self.send_bar_widget.height()
+        
+        self._send_bar_height_animation.stop()
+        self._send_bar_min_height_animation.stop()
+        self._send_bar_opacity_animation.stop()
+        
+        self._send_bar_height_animation.setStartValue(current_height)
+        self._send_bar_height_animation.setEndValue(0)
+        self._send_bar_min_height_animation.setStartValue(current_height)
+        self._send_bar_min_height_animation.setEndValue(0)
+        self._send_bar_opacity_animation.setStartValue(1)
+        self._send_bar_opacity_animation.setEndValue(0)
+        
+        self._send_bar_height_animation.start()
+        self._send_bar_min_height_animation.start()
+        self._send_bar_opacity_animation.start()
 
     def init_serial_setting_ui(self):
         main_serial_setting_layout = QVBoxLayout()
@@ -706,6 +886,13 @@ class Serial_Tools_Widget(QWidget):
         self.reception_area_text.setFont(font)
         self.reception_area_Hex_text.setFont(font)
         self.reception_area_fontsize_spinBox.setValue(cfg.get(cfg.serialFontSize))
+        
+        send_font = QFont("Microsoft YaHei", cfg.get(cfg.serialSendFontSize))
+        send_font.setStyleHint(QFont.StyleHint.Monospace)
+        send_font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
+        send_font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias | QFont.StyleStrategy.PreferQuality)
+        self.send_area_text.setFont(send_font)
+        self.send_area_fontsize_spinBox.setValue(cfg.get(cfg.serialSendFontSize))
 
     def on_dtr_changed(self, checked):
         cfg.set(cfg.serialDtrState, checked)
@@ -729,6 +916,12 @@ class Serial_Tools_Widget(QWidget):
             self.reception_area_text.setFont(font)
             self.reception_area_Hex_text.setFont(font)
             self.reception_area_fontsize_spinBox.setValue(font.pointSize())
+            
+            send_font = QFont("Microsoft YaHei", cfg.get(cfg.serialSendFontSize))
+            send_font.setStyleHint(QFont.StyleHint.Monospace)
+            send_font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
+            send_font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias | QFont.StyleStrategy.PreferQuality)
+            self.send_area_text.setFont(send_font)
             self.show_success_info_bar("字体设置：", f"已设置为 {font.family()}", 1000)
 
     def update_checkBox_state(self, state=None):
@@ -762,6 +955,7 @@ class Serial_Tools_Widget(QWidget):
             self.reception_area_text.set_terminal_mode(True)
             self.receive_bar_edit_togglebutton.setText("关闭终端")
             self.receive_bar_edit_togglebutton.setIcon(FIF.CLOSE)
+            self._hide_send_bar_with_animation()
             self.show_success_info_bar("终端模式：", "已开启，可交互发送数据", 1000)
         else:
             self.reception_area_text.setReadOnly(True)
@@ -769,6 +963,7 @@ class Serial_Tools_Widget(QWidget):
             self.reception_area_text.set_terminal_mode(False)
             self.receive_bar_edit_togglebutton.setText("终端模式")
             self.receive_bar_edit_togglebutton.setIcon(FIF.COMMAND_PROMPT)
+            self._show_send_bar_with_animation()
             self.show_success_info_bar("终端模式：", "已关闭", 1000)
 
     def send_terminal_data(self, data):
@@ -952,8 +1147,8 @@ class Serial_Tools_Widget(QWidget):
         self.reception_area_Hex_text.setTextCursor(cursor)
         self.reception_area_Hex_text.ensureCursorVisible()
 
-    def on_export_clicked(self):
-        if self.textMode_checkBox.isChecked():
+    def on_export_clicked(self, export_type="text"):
+        if export_type == "text":
             text_content = self.reception_area_text.toPlainText()
             default_name = "serial_text_log.txt"
         else:
@@ -1116,6 +1311,66 @@ class Serial_Tools_Widget(QWidget):
         widget.setObjectName(object_name)
         self.stackedWidget.addWidget(widget)
         self.pivot.addItem(routeKey=object_name, text=text)
+
+    def on_send_format_changed(self, index):
+        self._send_hex_mode = (index == 1)
+        mode = "Hex" if self._send_hex_mode else "文本"
+        self.show_success_info_bar("发送格式：", f"已切换为{mode}发送", 1000)
+
+    def clear_send_area(self):
+        self.send_area_text.clear()
+        self.show_success_info_bar("发送栏：", "已清空发送区", 1000)
+
+    def change_send_area_fontsize(self, value):
+        font = QFont("Microsoft YaHei", value)
+        font.setStyleHint(QFont.StyleHint.Monospace)
+        font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
+        font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias | QFont.StyleStrategy.PreferQuality)
+        self.send_area_text.setFont(font)
+        cfg.set(cfg.serialSendFontSize, value)
+
+    def on_send_clicked(self):
+        if self.serial_port is None or not self.serial_port.is_open:
+            InfoBar.warning(
+                title="发送失败：",
+                content="请先连接串口",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self,
+            )
+            return
+
+        text = self.send_area_text.toPlainText().strip()
+        if not text:
+            return
+
+        try:
+            if self._send_hex_mode:
+                hex_text = text.replace(" ", "").replace("\n", "").replace("\r", "")
+                if len(hex_text) % 2 != 0:
+                    raise ValueError("Hex数据长度必须为偶数")
+                data = bytes.fromhex(hex_text)
+            else:
+                data = text.encode('utf-8')
+            
+            self.serial_port.write(data)
+            self.send_area_text.add_to_history(text)
+            self.show_success_info_bar("发送成功：", f"已发送 {len(data)} 字节", 1000)
+            
+            if self.auto_clear_checkbox.isChecked():
+                self.send_area_text.clear()
+        except Exception as e:
+            InfoBar.error(
+                title="发送失败：",
+                content=str(e),
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self,
+            )
 
 
 if __name__ == "__main__":

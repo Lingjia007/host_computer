@@ -134,6 +134,8 @@ class Config(QConfig):
         "SerialPort", "DtrState", False, BoolValidator())
     serialRtsState = ConfigItem(
         "SerialPort", "RtsState", False, BoolValidator())
+    serialSendFontSize = RangeConfigItem(
+        "SerialPort", "SendFontSize", 10, RangeValidator(4, 100))
 
     @property
     def serialFont(self):
