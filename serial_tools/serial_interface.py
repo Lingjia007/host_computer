@@ -40,11 +40,14 @@ from qfluentwidgets import (
     setThemeColor,
     TogglePushButton,
     StrongBodyLabel,
+    ProgressRing,
 )
 
 import os
 import sys
 from settings.config import cfg
+
+from ymodem.Socket import ModemSocket
 
 
 class PyteTerminal:
@@ -393,6 +396,45 @@ class Serial_Data_Reader_Thread(QThread):
         self.wait()  # 等待线程结束
 
 
+class YModem_Send_Thread(QThread):
+    progress_updated = pyqtSignal(int, str, int, int)
+    send_completed = pyqtSignal(bool, str)
+
+    def __init__(self, serial_port, file_paths):
+        super().__init__()
+        self.serial_port = serial_port
+        self.file_paths = file_paths
+
+    def run(self):
+        def read(size, timeout=3):
+            try:
+                data = self.serial_port.read(size)
+                return data
+            except Exception as e:
+                return b''
+
+        def write(data, timeout=3):
+            try:
+                self.serial_port.write(data)
+                return len(data)
+            except Exception as e:
+                return 0
+
+        def ymodem_callback(task_index, task_name, total_packets, success_packets):
+            self.progress_updated.emit(task_index, task_name, total_packets, success_packets)
+
+        try:
+            from ymodem.Socket import ModemSocket
+            cli = ModemSocket(read, write)
+            result = cli.send(self.file_paths, callback=ymodem_callback)
+            if result:
+                self.send_completed.emit(True, f"已成功发送 {len(self.file_paths)} 个文件")
+            else:
+                self.send_completed.emit(False, "文件发送过程中出现错误")
+        except Exception as e:
+            self.send_completed.emit(False, str(e))
+
+
 class Serial_Tools_Widget(QWidget):
     def __init__(self):
         super().__init__()
@@ -605,6 +647,18 @@ class Serial_Tools_Widget(QWidget):
         self.send_bar_widget = QWidget()
         self.send_bar_vBoxLayout = QVBoxLayout(self.send_bar_widget)
 
+        # 创建发送区的水平布局，左侧放置进度环，右侧放置文本编辑区
+        send_area_hLayout = QHBoxLayout()
+        
+        # 初始化进度环
+        self.ymodem_progress_ring = ProgressRing(self)
+        # 增加进度环的大小
+        self.ymodem_progress_ring.setFixedSize(150, 150)
+        self.ymodem_progress_ring.setValue(0)
+        self.ymodem_progress_ring.setTextVisible(True)
+        self.ymodem_progress_ring.hide()
+        
+        # 发送文本区
         self.send_area_text = SendTextEdit()
         self.send_area_text.setReadOnly(False)
         font = QFont("Microsoft YaHei", 10)
@@ -612,7 +666,12 @@ class Serial_Tools_Widget(QWidget):
         font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
         font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias | QFont.StyleStrategy.PreferQuality)
         self.send_area_text.setFont(font)
-        self.send_bar_vBoxLayout.addWidget(self.send_area_text)
+        
+        # 将进度环添加到左侧，设置垂直对齐方式为居中
+        send_area_hLayout.addWidget(self.ymodem_progress_ring, 0, Qt.AlignmentFlag.AlignVCenter)
+        send_area_hLayout.addWidget(self.send_area_text, 1)
+        
+        self.send_bar_vBoxLayout.addLayout(send_area_hLayout)
 
         self._send_hex_mode = False
 
@@ -642,6 +701,11 @@ class Serial_Tools_Widget(QWidget):
         self.send_bar_button_hLayout.addWidget(self.send_area_fontsize_spinBox)
 
         self.send_bar_button_hLayout.addStretch(1)
+
+        self.ymodem_send_button = PushButton(FIF.FOLDER, "YMODEM发送", self)
+        self.ymodem_send_button.setFixedWidth(150)
+        self.ymodem_send_button.clicked.connect(self.on_ymodem_send_clicked)
+        self.send_bar_button_hLayout.addWidget(self.ymodem_send_button)
 
         self.send_button = PushButton(FIF.SEND, "发送", self)
         self.send_button.setFixedWidth(105)
@@ -967,6 +1031,9 @@ class Serial_Tools_Widget(QWidget):
             self.receive_bar_edit_togglebutton.setText("关闭终端")
             self.receive_bar_edit_togglebutton.setIcon(FIF.CLOSE)
             self._hide_send_bar_with_animation()
+            # 自动对焦到接收区
+            self.reception_area_text.setFocus()
+            self.reception_area_text.activateWindow()
             self.show_success_info_bar("终端模式：", "已开启，可交互发送数据", 1000)
         else:
             self.reception_area_text.setReadOnly(True)
@@ -1019,6 +1086,15 @@ class Serial_Tools_Widget(QWidget):
         self._hex_cleared = False
         self.show_success_info_bar("接收栏：", "已清空接收区", 1000)
 
+    def _enable_serial_settings(self, enabled):
+        self.port_combo.setEnabled(enabled)
+        self.baudrate_combo.setEnabled(enabled)
+        self.databit_combo.setEnabled(enabled)
+        self.stopbit_combo.setEnabled(enabled)
+        self.parity_combo.setEnabled(enabled)
+        self.dtr_switch.setEnabled(enabled)
+        self.rts_switch.setEnabled(enabled)
+
     def onToggle_serial_start_pushbutton(self, checked):
         def reset_button_and_close_serial():
             self.serial_start_pushbutton.setText("开始监视")
@@ -1044,6 +1120,8 @@ class Serial_Tools_Widget(QWidget):
                         duration=2000,
                         parent=self,
                     )
+            # 启用串口设置控件
+            self._enable_serial_settings(True)
 
         if checked:
             current_port_text = self.port_combo.currentText()
@@ -1060,6 +1138,9 @@ class Serial_Tools_Widget(QWidget):
                 self.serial_start_pushbutton.setChecked(False)
                 return
 
+            # 禁用串口设置控件
+            self._enable_serial_settings(False)
+            
             self.serial_start_pushbutton.setText("结束监视")
             self.serial_start_pushbutton.setIcon(FIF.PAUSE_BOLD)
             parity_to_char = self.parity_mapping.get(
@@ -1112,6 +1193,8 @@ class Serial_Tools_Widget(QWidget):
                     parent=self,
                 )
                 self.serial_start_pushbutton.setChecked(False)
+                # 重新启用串口设置控件
+                self._enable_serial_settings(True)
                 reset_button_and_close_serial()
         else:
             # 断开信号连接
@@ -1389,6 +1472,85 @@ class Serial_Tools_Widget(QWidget):
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self,
+            )
+
+    def on_ymodem_send_clicked(self):
+        if self.serial_port is None or not self.serial_port.is_open:
+            InfoBar.warning(
+                title="发送失败：",
+                content="请先连接串口",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self,
+            )
+            return
+
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+        file_dialog.setWindowTitle("选择要发送的文件")
+        
+        if file_dialog.exec():
+            selected_files = file_dialog.selectedFiles()
+            if selected_files:
+                # 显示一次InfoBar提示，显示当前要发送的文件，并保存引用以便完成后关闭
+                file_names = [os.path.basename(file) for file in selected_files]
+                self.ymodem_info_bar = InfoBar.info(
+                    title="YMODEM发送",
+                    content=f"正在发送：{', '.join(file_names)}",
+                    orient=Qt.Orientation.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP_RIGHT,
+                    duration=300000,
+                    parent=self,
+                )
+                self._ymodem_send_files(selected_files)
+
+    def _ymodem_send_files(self, file_paths):
+        # 显示进度环
+        self.ymodem_progress_ring.show()
+        self.ymodem_progress_ring.setValue(0)
+        
+        # 创建并启动YMODEM发送线程
+        self.ymodem_send_thread = YModem_Send_Thread(self.serial_port, file_paths)
+        self.ymodem_send_thread.progress_updated.connect(self._on_ymodem_progress_updated)
+        self.ymodem_send_thread.send_completed.connect(self._on_ymodem_send_completed)
+        self.ymodem_send_thread.start()
+
+    def _on_ymodem_progress_updated(self, task_index, task_name, total_packets, success_packets):
+        progress = (success_packets / total_packets) * 100 if total_packets > 0 else 0
+        self.ymodem_progress_ring.setValue(int(progress))
+
+    def _on_ymodem_send_completed(self, success, message):
+        # 关闭发送中的InfoBar提示
+        if hasattr(self, 'ymodem_info_bar') and self.ymodem_info_bar:
+            self.ymodem_info_bar.close()
+        
+        # 隐藏进度环
+        self.ymodem_progress_ring.hide()
+        self.ymodem_progress_ring.setValue(0)
+        
+        # 在右上角显示结果信息
+        if success:
+            InfoBar.success(
+                title="YMODEM发送成功",
+                content=message,
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=3000,
+                parent=self,
+            )
+        else:
+            InfoBar.error(
+                title="YMODEM发送失败",
+                content=message,
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
                 parent=self,
             )
