@@ -679,6 +679,17 @@ class Serial_Tools_Widget(QWidget):
     def _on_height_animation_finished(self):
         if self.send_bar_widget.maximumHeight() == 0:
             self.send_bar_widget.hide()
+        else:
+            # 当发送区显示完成后，使接收区下滑到底部
+            cursor = self.reception_area_text.textCursor()
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            self.reception_area_text.setTextCursor(cursor)
+            self.reception_area_text.ensureCursorVisible()
+            # 同时处理Hex显示区
+            cursor_hex = self.reception_area_Hex_text.textCursor()
+            cursor_hex.movePosition(QTextCursor.MoveOperation.End)
+            self.reception_area_Hex_text.setTextCursor(cursor_hex)
+            self.reception_area_Hex_text.ensureCursorVisible()
 
     def _show_send_bar_with_animation(self):
         self.send_bar_widget.show()
@@ -964,6 +975,16 @@ class Serial_Tools_Widget(QWidget):
             self.receive_bar_edit_togglebutton.setText("终端模式")
             self.receive_bar_edit_togglebutton.setIcon(FIF.COMMAND_PROMPT)
             self._show_send_bar_with_animation()
+            # 使接收区下滑到底部
+            cursor = self.reception_area_text.textCursor()
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            self.reception_area_text.setTextCursor(cursor)
+            self.reception_area_text.ensureCursorVisible()
+            # 同时处理Hex显示区
+            cursor_hex = self.reception_area_Hex_text.textCursor()
+            cursor_hex.movePosition(QTextCursor.MoveOperation.End)
+            self.reception_area_Hex_text.setTextCursor(cursor_hex)
+            self.reception_area_Hex_text.ensureCursorVisible()
             self.show_success_info_bar("终端模式：", "已关闭", 1000)
 
     def send_terminal_data(self, data):
