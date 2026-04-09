@@ -36,6 +36,10 @@
         "PageSize": 50,
         "SongQuality": "Standard quality"
     },
+    "PyOCD": {
+        "FirmwarePath": "D:/edgedownload/STM32F407VGT6_Bootloader/MDK-ARM/STM32F407VGT6_Bootloader/STM32F407VGT6_Bootloader.hex",
+        "TrustCrc": true
+    },
     "SerialPort": {
         "DtrState": false,
         "FontFamily": "FiraMono Nerd Font",

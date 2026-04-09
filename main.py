@@ -10,6 +10,7 @@ from qfluentwidgets import (NavigationItemPosition, MessageBox, setTheme, Theme,
                             InfoBadgePosition, FluentTranslator, SplashScreen)
 from qfluentwidgets import FluentIcon as FIF
 from serial_tools.serial_interface import Serial_Tools_Widget
+from pyocd_tools.pyocd_interface import Pyocd_Tools_Widget
 from settings.setting_interface import SettingInterface
 from settings.config import cfg, Language
 
@@ -34,6 +35,7 @@ class Window(FluentWindow):
 
         self.homeInterface = Widget('Home Interface', self)
         self.serialInterface = Serial_Tools_Widget()
+        self.pyocdInterface = Pyocd_Tools_Widget()
         self.settingInterface = SettingInterface(self)
 
         self.initNavigation()
@@ -59,6 +61,7 @@ class Window(FluentWindow):
 
     def initNavigation(self):
         self.addSubInterface(self.serialInterface, FIF.DEVELOPER_TOOLS, 'Serial Port')
+        self.addSubInterface(self.pyocdInterface, FIF.DOWNLOAD, 'PyOCD烧录')
         self.addSubInterface(self.homeInterface, FIF.HOME, 'Home')
 
         self.navigationInterface.addWidget(

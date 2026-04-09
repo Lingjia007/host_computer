@@ -136,6 +136,12 @@ class Config(QConfig):
         "SerialPort", "RtsState", False, BoolValidator())
     serialSendFontSize = RangeConfigItem(
         "SerialPort", "SendFontSize", 10, RangeValidator(4, 100))
+    
+    # pyocd settings
+    pyocdFirmwarePath = ConfigItem(
+        "PyOCD", "FirmwarePath", "")
+    pyocdTrustCrc = ConfigItem(
+        "PyOCD", "TrustCrc", True, BoolValidator())
 
     @property
     def serialFont(self):
