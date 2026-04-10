@@ -26,6 +26,7 @@ class SettingInterface(ScrollArea):
     acrylicEnableChanged = pyqtSignal(bool)
     downloadFolderChanged = pyqtSignal(str)
     minimizeToTrayChanged = pyqtSignal(bool)
+    cmPackPathChanged = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -176,6 +177,17 @@ class SettingInterface(ScrollArea):
             parent=self.mainPanelGroup
         )
 
+        # CM pack settings
+        self.cmPackGroup = SettingCardGroup(
+            self.tr("CM Pack Settings"), self.scrollWidget)
+        self.cmPackPathCard = PushSettingCard(
+            self.tr('Choose folder'),
+            FIF.FOLDER,
+            self.tr("CM Pack Path"),
+            cfg.get(cfg.cmPackPath),
+            self.cmPackGroup
+        )
+
         # update software
         self.updateSoftwareGroup = SettingCardGroup(self.tr("Software update"), self.scrollWidget)
         self.updateOnStartUpCard = SwitchSettingCard(
@@ -255,6 +267,9 @@ class SettingInterface(ScrollArea):
 
         self.mainPanelGroup.addSettingCard(self.minimizeToTrayCard)
 
+        # CM pack settings
+        self.cmPackGroup.addSettingCard(self.cmPackPathCard)
+
         self.aboutGroup.addSettingCard(self.helpCard)
         self.aboutGroup.addSettingCard(self.feedbackCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
@@ -267,6 +282,7 @@ class SettingInterface(ScrollArea):
         self.expandLayout.addWidget(self.onlineMusicGroup)
         self.expandLayout.addWidget(self.deskLyricGroup)
         self.expandLayout.addWidget(self.mainPanelGroup)
+        self.expandLayout.addWidget(self.cmPackGroup)
         self.expandLayout.addWidget(self.updateSoftwareGroup)
         self.expandLayout.addWidget(self.aboutGroup)
 
@@ -305,6 +321,18 @@ class SettingInterface(ScrollArea):
         cfg.set(cfg.downloadFolder, folder)
         self.downloadFolderCard.setContent(folder)
 
+    def __onCMPackPathCardClicked(self):
+        """ CM pack path card clicked slot """
+        folder = QFileDialog.getExistingDirectory(
+            self, self.tr("Choose folder"), "./")
+        if not folder or cfg.get(cfg.cmPackPath) == folder:
+            return
+
+        cfg.set(cfg.cmPackPath, folder)
+        self.cmPackPathCard.setContent(folder)
+        # 发送信号通知主窗口更新目标类型
+        self.cmPackPathChanged.emit(folder)
+
     def __onThemeChanged(self, theme: Theme):
         """ theme changed slot """
         # change the theme of qfluentwidgets
@@ -323,6 +351,10 @@ class SettingInterface(ScrollArea):
             self.musicFoldersChanged)
         self.downloadFolderCard.clicked.connect(
             self.__onDownloadFolderCardClicked)
+
+        # CM pack settings
+        self.cmPackPathCard.clicked.connect(
+            self.__onCMPackPathCardClicked)
 
         # personalization
         self.enableAcrylicCard.checkedChanged.connect(

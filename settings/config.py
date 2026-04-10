@@ -143,6 +143,10 @@ class Config(QConfig):
     pyocdTrustCrc = ConfigItem(
         "PyOCD", "TrustCrc", True, BoolValidator())
 
+    # CM pack settings
+    cmPackPath = ConfigItem(
+        "CMPack", "PackPath", "C:\\Users\\31254\\AppData\\Local\\cmsis-pack-manager\\cmsis-pack-manager\\Keil\\STM32F4xx_DFP", FolderValidator())
+
     @property
     def serialFont(self):
         """ get the serial port font """

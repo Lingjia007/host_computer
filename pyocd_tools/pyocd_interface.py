@@ -3,6 +3,8 @@ import sys
 import os
 import re
 import subprocess
+import zipfile
+import xml.etree.ElementTree as ET
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtWidgets import (
     QWidget,
@@ -83,37 +85,37 @@ class Pyocd_List_Targets_Thread(QThread):
     def run(self):
         target_list = []
         
-        # 优先使用命令行方式获取 target 列表（包含 pack 中的 target）
+        # 扫描 CMSIS pack 目录获取 target 列表
         try:
-            process = subprocess.Popen(
-                ["pyocd", "list", "--targets"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            
-            output, error = process.communicate()
-            
-            if process.returncode == 0:
-                lines = output.strip().split('\n')
-                for line in lines:
-                    line = line.strip()
-                    if line and not line.startswith('#') and not line.startswith('Available') and not line.startswith('-') and not line.startswith('Name'):
-                        parts = line.split()
-                        if parts:
-                            target_name = parts[0]
-                            if target_name and target_name not in target_list:
-                                target_list.append(target_name)
+            # 使用设置中的 CM pack 路径的父目录（包含所有 pack 的目录）
+            pack_path = cfg.get(cfg.cmPackPath)
+            if pack_path:
+                # 获取 pack 路径的父目录
+                parent_dir = os.path.dirname(pack_path)
+                if not parent_dir or not os.path.exists(parent_dir):
+                    parent_dir = pack_path
+                
+                # 扫描父目录下的所有 pack 文件
+                for root, dirs, files in os.walk(parent_dir):
+                    for file in files:
+                        if file.endswith('.pack'):
+                            # 解析 pack 文件获取 target 信息
+                            pack_file = os.path.join(root, file)
+                            targets = self._parse_pack_targets(pack_file)
+                            for target in targets:
+                                if target and target not in target_list:
+                                    target_list.append(target)
                 
                 target_list.sort()
                 
                 if len(target_list) > 0:
                     self.targets_found.emit(target_list)
                     return
-        except:
+        except Exception as e:
+            self.error_occurred.emit(str(e))
             pass
         
-        # 如果命令行方式失败，尝试使用 pyOCD API
+        # 如果扫描 pack 目录失败，尝试使用 pyOCD API
         if PYOCD_AVAILABLE:
             try:
                 from pyocd.target import TARGET
@@ -167,6 +169,29 @@ class Pyocd_List_Targets_Thread(QThread):
             ])
         
         self.targets_found.emit(target_list)
+    
+    def _parse_pack_targets(self, pack_file):
+        """ 解析 pack 文件获取 target 信息 """
+        targets = []
+        try:
+            with zipfile.ZipFile(pack_file, 'r') as z:
+                pdsc_files = [n for n in z.namelist() if n.endswith('.pdsc')]
+                if not pdsc_files:
+                    return targets
+                content = z.read(pdsc_files[0]).decode('utf-8')
+                root = ET.fromstring(content)
+                
+                for device in root.findall('.//device'):
+                    dname = device.get('Dname')
+                    if dname and dname not in targets:
+                        targets.append(dname.lower())
+                    for variant in device.findall('.//variant'):
+                        dvariant = variant.get('Dvariant')
+                        if dvariant and dvariant not in targets:
+                            targets.append(dvariant.lower())
+        except:
+            pass
+        return targets
 
 
 class Pyocd_Program_Thread(QThread):
@@ -198,6 +223,14 @@ class Pyocd_Program_Thread(QThread):
 
         try:
             self.output_received.emit(f"正在连接目标设备...")
+            
+            # 使用设置中的 CM pack 路径的父目录（包含所有 pack 的目录）
+            pack_path = cfg.get(cfg.cmPackPath)
+            if pack_path:
+                # 获取 pack 路径的父目录
+                parent_dir = os.path.dirname(pack_path)
+                if parent_dir and os.path.exists(parent_dir):
+                    os.environ["CMSIS_PACK_ROOT"] = parent_dir
             
             connect_mode_map = {
                 'halt': 'halt',
@@ -500,6 +533,8 @@ class Pyocd_Tools_Widget(QWidget):
         
         self.pack_label = BodyLabel("CMSIS Pack:")
         self.pack_lineedit = LineEdit()
+        # 使用设置中的 CM pack 路径
+        self.pack_lineedit.setText(cfg.get(cfg.cmPackPath))
         self.pack_lineedit.setPlaceholderText("留空使用默认Pack")
         pack_hlayout = QHBoxLayout()
         pack_hlayout.addWidget(self.pack_label)

@@ -48,6 +48,9 @@ class Window(FluentWindow):
         self.createSubInterface()
         self.splashScreen.finish()
 
+        # 连接 CM pack 路径变化信号
+        self.settingInterface.cmPackPathChanged.connect(self.pyocdInterface.scan_targets)
+
         self.switchTo(self.serialInterface)
 
     def resizeEvent(self, event):

@@ -2,6 +2,9 @@
     "Update": {
         "CheckUpdateAtStartUp": true
     },
+    "CMPack": {
+        "PackPath": "C:/Users/31254/AppData/Local/cmsis-pack-manager/cmsis-pack-manager"
+    },
     "DesktopLyric": {
         "Alignment": "Center",
         "FontFamily": "微软雅黑",
